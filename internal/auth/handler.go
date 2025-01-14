@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/raevsanton/sharify-backend/configs"
@@ -24,19 +23,17 @@ func NewAuthHandler(router *http.ServeMux, deps AuthHandlerDeps) {
 		Config:      deps.Config,
 		AuthService: deps.AuthService,
 	}
-	router.HandleFunc("POST /auth", handler.Auth())
+	router.HandleFunc("POST /auth", handler.Auth(deps.Config))
 }
 
-func (handler *AuthHandler) Auth() http.HandlerFunc {
+func (handler *AuthHandler) Auth(config *configs.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := req.HandleBody[AuthRequest](&w, r)
-
-		fmt.Println(body)
 		if err != nil {
 			return
 		}
 
-		tokens, err := handler.AuthService.GetTokens(body.AuthorizationCode)
+		tokens, err := handler.AuthService.GetTokens(body.AuthorizationCode, config)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

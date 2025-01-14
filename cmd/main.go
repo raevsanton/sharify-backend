@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/raevsanton/sharify-backend/configs"
@@ -25,6 +26,6 @@ func main() {
 		Addr:    ":8081",
 		Handler: middleware.CORS(router),
 	}
-
+	fmt.Println("Server is listening on port 8081")
 	server.ListenAndServe()
 }

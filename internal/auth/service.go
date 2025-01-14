@@ -1,13 +1,14 @@
 package auth
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
+
+	"github.com/raevsanton/sharify-backend/configs"
+	"github.com/raevsanton/sharify-backend/pkg/codec"
 )
 
 type AuthService struct {
@@ -17,14 +18,10 @@ func NewAuthService() *AuthService {
 	return &AuthService{}
 }
 
-func (service *AuthService) GetTokens(authCode string) (AuthResponse, error) {
-	clientID := os.Getenv("CLIENT_ID")
-	clientSecret := os.Getenv("CLIENT_SECRET")
-	redirectURI := os.Getenv("CLIENT_URL")
-
+func (service *AuthService) GetTokens(authCode string, config *configs.Config) (AuthResponse, error) {
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
-	data.Set("redirect_uri", redirectURI)
+	data.Set("redirect_uri", config.Auth.ClientUrl)
 	data.Set("code", authCode)
 
 	req, err := http.NewRequest(http.MethodPost, "https://accounts.spotify.com/api/token", strings.NewReader(data.Encode()))
@@ -33,22 +30,22 @@ func (service *AuthService) GetTokens(authCode string) (AuthResponse, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(clientID, clientSecret)
+	req.SetBasicAuth(config.Auth.ClientId, config.Auth.ClientSecret)
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return AuthResponse{}, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return AuthResponse{}, fmt.Errorf("received non-OK status: %d, body: %s", resp.StatusCode, body)
+	if res.StatusCode != http.StatusOK {
+		tokens, _ := io.ReadAll(res.Body)
+		return AuthResponse{}, fmt.Errorf("received non-OK status: %d, body: %s", res.StatusCode, tokens)
 	}
 
-	var tokens AuthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokens); err != nil {
-		return AuthResponse{}, fmt.Errorf("failed to decode response: %w", err)
+	tokens, err := codec.Decode[AuthResponse](res.Body)
+	if err != nil {
+		return AuthResponse{}, fmt.Errorf("wrong response body: %s", tokens)
 	}
 
 	return tokens, nil
