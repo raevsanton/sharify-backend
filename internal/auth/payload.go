@@ -1,7 +1,7 @@
 package auth
 
 type AuthRequest struct {
-	AuthorizationCode string `json:"auth_code" validate:"required"`
+	AuthorizationCode string `json:"code" validate:"required"`
 }
 
 type AuthResponse struct {
