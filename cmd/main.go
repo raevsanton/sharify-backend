@@ -6,6 +6,7 @@ import (
 
 	"github.com/raevsanton/sharify-backend/configs"
 	"github.com/raevsanton/sharify-backend/internal/auth"
+	"github.com/raevsanton/sharify-backend/internal/playlist"
 	"github.com/raevsanton/sharify-backend/pkg/middleware"
 )
 
@@ -15,11 +16,16 @@ func main() {
 
 	// Services
 	authService := auth.NewAuthService()
+	playlistService := playlist.NewPlaylistService()
 
 	// Handlers
 	auth.NewAuthHandler(router, auth.AuthHandlerDeps{
 		Config:      conf,
 		AuthService: authService,
+	})
+	playlist.NewPlaylistHandler(router, playlist.PlaylistHandlerDeps{
+		Config:          conf,
+		PlaylistService: playlistService,
 	})
 
 	server := http.Server{
