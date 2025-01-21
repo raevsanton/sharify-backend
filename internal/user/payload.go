@@ -1,6 +1,10 @@
 package user
 
-type UserResponse struct {
+type CurrentUserRequest struct {
+	AccessToken string `json:"access_token" validate:"required"`
+}
+
+type CurrentUserResponse struct {
 	Country         string          `json:"country"`
 	DisplayName     string          `json:"display_name"`
 	Email           string          `json:"email"`
