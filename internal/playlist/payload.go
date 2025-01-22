@@ -33,3 +33,8 @@ type CreatePlaylistResponse struct {
 	Id string `json:"id"`
 	// more fields
 }
+
+type AddTracksToPlaylistRequest struct {
+	URIs     []string `json:"uris" validate:"required"`
+	Position int      `json:"position" validate:"required"`
+}

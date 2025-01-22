@@ -24,7 +24,8 @@ func NewPlaylistService(userService *user.UserService) *PlaylistService {
 }
 
 func (service *PlaylistService) CreatePlaylist(body PlaylistRequest) (CreatePlaylistResponse, error) {
-	user, err := service.userService.GetCurrentUserProfile(user.CurrentUserRequest{})
+	accessToken := body.AccessToken
+	user, err := service.userService.GetCurrentUserProfile(accessToken)
 	if err != nil {
 		return CreatePlaylistResponse{}, err
 	}
@@ -49,7 +50,7 @@ func (service *PlaylistService) CreatePlaylist(body PlaylistRequest) (CreatePlay
 		return CreatePlaylistResponse{}, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusCreated {
 		tokens, _ := io.ReadAll(res.Body)
 		return CreatePlaylistResponse{}, fmt.Errorf("received non-OK status: %d, body: %s", res.StatusCode, tokens)
 	}
@@ -99,14 +100,19 @@ func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, offset 
 }
 
 func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, hundredURIs []string, playlistId CreatePlaylistResponse, position int) error {
-	url := fmt.Sprintf("https://api.spotify.com/v1/playlists/%d/tracks", playlistId.Id)
+	url := fmt.Sprintf("https://api.spotify.com/v1/playlists/%s/tracks", playlistId.Id)
 
-	jsonBody, err := json.Marshal(body)
+	bodyRequest := AddTracksToPlaylistRequest{
+		URIs:     hundredURIs,
+		Position: position,
+	}
+
+	bodyJson, err := json.Marshal(bodyRequest)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyJson))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -114,12 +120,12 @@ func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, hundre
 	req.Header.Set("Authorization", "Bearer "+body.AccessToken)
 
 	client := &http.Client{}
-	res, err := client.Do(req)
+	_, err = client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to fetch adding tracks to playlist: %w", err)
 	}
 
-	return fmt.Errorf("received non-OK status: %d", res.StatusCode)
+	return nil
 }
 
 func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *configs.Config) (PlaylistResponse, error) {
@@ -138,7 +144,7 @@ func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *c
 		offset += 50
 		accumulatedURIs = append(accumulatedURIs, URIs...)
 
-		if totalURIs > len(accumulatedURIs) {
+		if len(accumulatedURIs) >= totalURIs {
 			break
 		}
 	}
