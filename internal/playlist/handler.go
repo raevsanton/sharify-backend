@@ -33,12 +33,12 @@ func (handler *PlaylistHandler) Playlist(config *configs.Config) http.HandlerFun
 			return
 		}
 
-		tokens, err := handler.PlaylistService.GeneratePlaylist(*body, config)
+		playlistId, err := handler.PlaylistService.GeneratePlaylist(*body, config)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		res.Json(w, tokens, http.StatusOK)
+		res.Json(w, playlistId, http.StatusOK)
 	}
 }

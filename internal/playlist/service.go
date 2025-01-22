@@ -99,7 +99,27 @@ func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, offset 
 }
 
 func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, hundredURIs []string, playlistId CreatePlaylistResponse, position int) error {
+	url := fmt.Sprintf("https://api.spotify.com/v1/playlists/%d/tracks", playlistId.Id)
 
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+body.AccessToken)
+
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to fetch adding tracks to playlist: %w", err)
+	}
+
+	return fmt.Errorf("received non-OK status: %d", res.StatusCode)
 }
 
 func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *configs.Config) (PlaylistResponse, error) {
@@ -139,5 +159,7 @@ func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *c
 		position += 100
 	}
 
-	return PlaylistResponse{}, err
+	return PlaylistResponse{
+		PlaylistId: playlistId.Id,
+	}, err
 }

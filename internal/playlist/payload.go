@@ -8,8 +8,7 @@ type PlaylistRequest struct {
 }
 
 type PlaylistResponse struct {
-	PlaylistId  string `json:"playlist_id"`
-	AccessToken string `json:"access_token"`
+	PlaylistId string `json:"playlist_id"`
 }
 
 type LikedTracksResponse struct {
