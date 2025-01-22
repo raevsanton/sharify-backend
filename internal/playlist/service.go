@@ -1,6 +1,8 @@
 package playlist
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,7 +23,7 @@ func NewPlaylistService(userService *user.UserService) *PlaylistService {
 	}
 }
 
-func (service *PlaylistService) CreatePlaylist(body PlaylistRequest) (id CreatePlaylistResponse, err error) {
+func (service *PlaylistService) CreatePlaylist(body PlaylistRequest) (CreatePlaylistResponse, error) {
 	user, err := service.userService.GetCurrentUserProfile(user.CurrentUserRequest{})
 	if err != nil {
 		return CreatePlaylistResponse{}, err
@@ -29,7 +31,12 @@ func (service *PlaylistService) CreatePlaylist(body PlaylistRequest) (id CreateP
 
 	url := fmt.Sprintf("https://api.spotify.com/v1/users/%s/playlists", url.PathEscape(user.ID))
 
-	req, err := http.NewRequest(http.MethodPost, url, body)
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return CreatePlaylistResponse{}, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
 	if err != nil {
 		return CreatePlaylistResponse{}, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -46,6 +53,13 @@ func (service *PlaylistService) CreatePlaylist(body PlaylistRequest) (id CreateP
 		tokens, _ := io.ReadAll(res.Body)
 		return CreatePlaylistResponse{}, fmt.Errorf("received non-OK status: %d, body: %s", res.StatusCode, tokens)
 	}
+
+	playlist, err := codec.Decode[CreatePlaylistResponse](res.Body)
+	if err != nil {
+		return CreatePlaylistResponse{}, fmt.Errorf("failed to get liked tracks: %w", err)
+	}
+
+	return playlist, nil
 
 }
 
@@ -67,7 +81,7 @@ func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, offset 
 
 	if res.StatusCode != http.StatusOK {
 		tracks, _ := io.ReadAll(res.Body)
-		return LikedTracksResponse{}, 0, fmt.Errorf("received non-OK status: %d, body: %s", res.StatusCode, tracks)
+		return nil, 0, fmt.Errorf("received non-OK status: %d, body: %s", res.StatusCode, tracks)
 	}
 
 	tracks, err := codec.Decode[LikedTracksResponse](res.Body)
@@ -84,6 +98,10 @@ func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, offset 
 
 }
 
+func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, hundredURIs []string, playlistId CreatePlaylistResponse, position int) error {
+
+}
+
 func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *configs.Config) (PlaylistResponse, error) {
 	var accumulatedURIs []string
 	totalURIs := 0
@@ -92,7 +110,7 @@ func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *c
 	for {
 		URIs, total, err := service.GetURIsLikedTracks(body, offset)
 		if err != nil {
-			return PlaylistResponse{}, fmt.Errorf("failed to get liked tracks URIs: %w", err)
+			return PlaylistResponse{}, err
 		}
 		if totalURIs == 0 {
 			totalURIs = total
@@ -105,5 +123,21 @@ func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *c
 		}
 	}
 
-	return PlaylistResponse{}, fmt.Errorf("failed to get liked tracks: %w", nil)
+	playlistId, err := service.CreatePlaylist(body)
+	if err != nil {
+		return PlaylistResponse{}, err
+	}
+
+	position := 0
+
+	for i := 0; i < len(accumulatedURIs); i += 100 {
+		hundredURIs := accumulatedURIs[i:min(i+100, len(accumulatedURIs))]
+		err := service.AddTracksToPlaylist(body, hundredURIs, playlistId, position)
+		if err != nil {
+			return PlaylistResponse{}, err
+		}
+		position += 100
+	}
+
+	return PlaylistResponse{}, err
 }

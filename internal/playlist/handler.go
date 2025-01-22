@@ -23,10 +23,10 @@ func NewPlaylistHandler(router *http.ServeMux, deps PlaylistHandlerDeps) {
 		Config:          deps.Config,
 		PlaylistService: deps.PlaylistService,
 	}
-	router.HandleFunc("POST /playlist", handler.CreatePlaylist(deps.Config))
+	router.HandleFunc("POST /playlist", handler.Playlist(deps.Config))
 }
 
-func (handler *PlaylistHandler) CreatePlaylist(config *configs.Config) http.HandlerFunc {
+func (handler *PlaylistHandler) Playlist(config *configs.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := req.HandleBody[PlaylistRequest](&w, r)
 		if err != nil {
