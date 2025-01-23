@@ -5,7 +5,6 @@ import (
 
 	"github.com/raevsanton/sharify-backend/configs"
 	"github.com/raevsanton/sharify-backend/pkg/req"
-	"github.com/raevsanton/sharify-backend/pkg/res"
 )
 
 type AuthHandlerDeps struct {
@@ -39,6 +38,26 @@ func (handler *AuthHandler) Auth(config *configs.Config) http.HandlerFunc {
 			return
 		}
 
-		res.Json(w, tokens, http.StatusOK)
+		http.SetCookie(w, &http.Cookie{
+			Name:     "access_token",
+			Value:    tokens.AccessToken,
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   3600,
+			Path:     "/",
+		})
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    tokens.RefreshToken,
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   604800,
+			Path:     "/",
+		})
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
