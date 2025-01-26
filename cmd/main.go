@@ -11,7 +11,7 @@ import (
 	"github.com/raevsanton/sharify-backend/pkg/middleware"
 )
 
-func main() {
+func App() http.Handler {
 	conf := configs.LoadConfig()
 	router := http.NewServeMux()
 
@@ -30,9 +30,19 @@ func main() {
 		PlaylistService: playlistService,
 	})
 
+	// Middlewares
+	stack := middleware.Chain(
+		middleware.CORS,
+	)
+
+	return stack(router)
+}
+
+func main() {
+	app := App()
 	server := http.Server{
 		Addr:    ":8081",
-		Handler: middleware.CORS(router),
+		Handler: app,
 	}
 	fmt.Println("Server is listening on port 8081")
 	server.ListenAndServe()

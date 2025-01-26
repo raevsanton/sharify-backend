@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/raevsanton/sharify-backend/configs"
+	"github.com/raevsanton/sharify-backend/pkg/cookie"
+	"github.com/raevsanton/sharify-backend/pkg/middleware"
 	"github.com/raevsanton/sharify-backend/pkg/req"
 	"github.com/raevsanton/sharify-backend/pkg/res"
 )
@@ -23,7 +25,7 @@ func NewPlaylistHandler(router *http.ServeMux, deps PlaylistHandlerDeps) {
 		Config:          deps.Config,
 		PlaylistService: deps.PlaylistService,
 	}
-	router.HandleFunc("POST /playlist", handler.Playlist(deps.Config))
+	router.Handle("POST /playlist", middleware.IsAuthed(handler.Playlist(deps.Config), deps.Config))
 }
 
 func (handler *PlaylistHandler) Playlist(config *configs.Config) http.HandlerFunc {
@@ -33,7 +35,13 @@ func (handler *PlaylistHandler) Playlist(config *configs.Config) http.HandlerFun
 			return
 		}
 
-		playlistId, err := handler.PlaylistService.GeneratePlaylist(*body, config)
+		accessToken, err := cookie.GetCookie(r, "access_token")
+		if err != nil {
+			http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		playlistId, err := handler.PlaylistService.GeneratePlaylist(*body, config, accessToken)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

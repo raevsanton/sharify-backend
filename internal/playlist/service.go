@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/raevsanton/sharify-backend/configs"
 	"github.com/raevsanton/sharify-backend/internal/user"
-	"github.com/raevsanton/sharify-backend/pkg/codec"
+	"github.com/raevsanton/sharify-backend/pkg/req"
 )
 
 type PlaylistService struct {
@@ -23,9 +22,8 @@ func NewPlaylistService(userService *user.UserService) *PlaylistService {
 	}
 }
 
-func (service *PlaylistService) CreatePlaylist(body PlaylistRequest) (CreatePlaylistResponse, error) {
-	accessToken := body.AccessToken
-	user, err := service.userService.GetCurrentUserProfile(accessToken)
+func (service *PlaylistService) CreatePlaylist(body PlaylistRequest, token string) (CreatePlaylistResponse, error) {
+	user, err := service.userService.GetCurrentUserProfile(token)
 	if err != nil {
 		return CreatePlaylistResponse{}, err
 	}
@@ -37,57 +35,28 @@ func (service *PlaylistService) CreatePlaylist(body PlaylistRequest) (CreatePlay
 		return CreatePlaylistResponse{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	r, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
 	if err != nil {
-		return CreatePlaylistResponse{}, fmt.Errorf("failed to create request: %w", err)
+		return CreatePlaylistResponse{}, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+body.AccessToken)
-
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return CreatePlaylistResponse{}, fmt.Errorf("failed to send request: %w", err)
-	}
-
-	if res.StatusCode != http.StatusCreated {
-		tokens, _ := io.ReadAll(res.Body)
-		return CreatePlaylistResponse{}, fmt.Errorf("received non-OK status: %d, body: %s", res.StatusCode, tokens)
-	}
-
-	playlist, err := codec.Decode[CreatePlaylistResponse](res.Body)
-	if err != nil {
-		return CreatePlaylistResponse{}, fmt.Errorf("failed to get liked tracks: %w", err)
-	}
-
-	return playlist, nil
-
+	r.Header.Set("Authorization", "Bearer "+token)
+	return req.DoRequest[CreatePlaylistResponse](r, http.StatusCreated)
 }
 
-func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, offset int) (URIs []string, total int, err error) {
+func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, token string, offset int) (URIs []string, total int, err error) {
 	url := fmt.Sprintf("https://api.spotify.com/v1/me/tracks?offset=%d&limit=50", offset)
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	r, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+body.AccessToken)
+	r.Header.Set("Authorization", "Bearer "+token)
 
-	client := &http.Client{}
-	res, err := client.Do(req)
+	tracks, err := req.DoRequest[LikedTracksResponse](r, http.StatusOK)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to fetch liked tracks: %w", err)
-	}
-
-	if res.StatusCode != http.StatusOK {
-		tracks, _ := io.ReadAll(res.Body)
-		return nil, 0, fmt.Errorf("received non-OK status: %d, body: %s", res.StatusCode, tracks)
-	}
-
-	tracks, err := codec.Decode[LikedTracksResponse](res.Body)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get liked tracks: %w", err)
+		return nil, 0, err
 	}
 
 	var uris []string
@@ -96,10 +65,9 @@ func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, offset 
 	}
 
 	return uris, tracks.Total, nil
-
 }
 
-func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, hundredURIs []string, playlistId CreatePlaylistResponse, position int) error {
+func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, token string, hundredURIs []string, playlistId CreatePlaylistResponse, position int) error {
 	url := fmt.Sprintf("https://api.spotify.com/v1/playlists/%s/tracks", playlistId.Id)
 
 	bodyRequest := AddTracksToPlaylistRequest{
@@ -117,7 +85,7 @@ func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, hundre
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+body.AccessToken)
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	client := &http.Client{}
 	_, err = client.Do(req)
@@ -128,13 +96,13 @@ func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, hundre
 	return nil
 }
 
-func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *configs.Config) (PlaylistResponse, error) {
+func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *configs.Config, token string) (PlaylistResponse, error) {
 	var accumulatedURIs []string
 	totalURIs := 0
 	offset := 0
 
 	for {
-		URIs, total, err := service.GetURIsLikedTracks(body, offset)
+		URIs, total, err := service.GetURIsLikedTracks(body, token, offset)
 		if err != nil {
 			return PlaylistResponse{}, err
 		}
@@ -149,7 +117,7 @@ func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *c
 		}
 	}
 
-	playlistId, err := service.CreatePlaylist(body)
+	playlistId, err := service.CreatePlaylist(body, token)
 	if err != nil {
 		return PlaylistResponse{}, err
 	}
@@ -158,7 +126,7 @@ func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *c
 
 	for i := 0; i < len(accumulatedURIs); i += 100 {
 		hundredURIs := accumulatedURIs[i:min(i+100, len(accumulatedURIs))]
-		err := service.AddTracksToPlaylist(body, hundredURIs, playlistId, position)
+		err := service.AddTracksToPlaylist(body, token, hundredURIs, playlistId, position)
 		if err != nil {
 			return PlaylistResponse{}, err
 		}

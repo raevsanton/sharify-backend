@@ -4,7 +4,6 @@ type PlaylistRequest struct {
 	Name        string `json:"name" validate:"required"`
 	Description string `json:"description"`
 	Public      bool   `json:"is_public"`
-	AccessToken string `json:"access_token" validate:"required"`
 }
 
 type PlaylistResponse struct {
@@ -37,4 +36,8 @@ type CreatePlaylistResponse struct {
 type AddTracksToPlaylistRequest struct {
 	URIs     []string `json:"uris" validate:"required"`
 	Position int      `json:"position" validate:"required"`
+}
+
+type AddTracksToPlaylistResponse struct {
+	SnapshotId string `json:"snapshot_id"`
 }

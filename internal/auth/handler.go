@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/raevsanton/sharify-backend/configs"
+	"github.com/raevsanton/sharify-backend/pkg/cookie"
 	"github.com/raevsanton/sharify-backend/pkg/req"
 )
 
@@ -29,6 +30,7 @@ func (handler *AuthHandler) Auth(config *configs.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := req.HandleBody[AuthRequest](&w, r)
 		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -38,25 +40,8 @@ func (handler *AuthHandler) Auth(config *configs.Config) http.HandlerFunc {
 			return
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     "access_token",
-			Value:    tokens.AccessToken,
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-			MaxAge:   3600,
-			Path:     "/",
-		})
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     "refresh_token",
-			Value:    tokens.RefreshToken,
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-			MaxAge:   604800,
-			Path:     "/",
-		})
+		cookie.SetCookie(w, "access_token", tokens.AccessToken, 3600)
+		cookie.SetCookie(w, "refresh_token", tokens.RefreshToken, 604800)
 
 		w.WriteHeader(http.StatusOK)
 	}
