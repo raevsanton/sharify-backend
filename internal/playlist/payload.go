@@ -37,7 +37,3 @@ type AddTracksToPlaylistRequest struct {
 	URIs     []string `json:"uris" validate:"required"`
 	Position int      `json:"position" validate:"required"`
 }
-
-type AddTracksToPlaylistResponse struct {
-	SnapshotId string `json:"snapshot_id"`
-}

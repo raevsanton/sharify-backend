@@ -16,8 +16,8 @@ func App() http.Handler {
 	router := http.NewServeMux()
 
 	// Services
-	authService := auth.NewAuthService()
 	userService := user.NewUseService()
+	authService := auth.NewAuthService(userService)
 	playlistService := playlist.NewPlaylistService(userService)
 
 	// Handlers

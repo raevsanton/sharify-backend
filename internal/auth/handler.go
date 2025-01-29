@@ -23,10 +23,11 @@ func NewAuthHandler(router *http.ServeMux, deps AuthHandlerDeps) {
 		Config:      deps.Config,
 		AuthService: deps.AuthService,
 	}
-	router.HandleFunc("POST /auth", handler.Auth(deps.Config))
+	router.HandleFunc("POST /auth", handler.Authentication(deps.Config))
+	router.HandleFunc("GET /auth", handler.TokenValidation(deps.Config))
 }
 
-func (handler *AuthHandler) Auth(config *configs.Config) http.HandlerFunc {
+func (handler *AuthHandler) Authentication(config *configs.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := req.HandleBody[AuthRequest](&w, r)
 		if err != nil {
@@ -42,6 +43,24 @@ func (handler *AuthHandler) Auth(config *configs.Config) http.HandlerFunc {
 
 		cookie.SetCookie(w, "access_token", tokens.AccessToken, 3600)
 		cookie.SetCookie(w, "refresh_token", tokens.RefreshToken, 604800)
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func (handler *AuthHandler) TokenValidation(config *configs.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		accessToken, err := cookie.GetCookie(r, "access_token")
+		if err != nil {
+			http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		_, err = handler.userService.GetCurrentUserProfile(accessToken)
+		if err != nil {
+			http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 	}

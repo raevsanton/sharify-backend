@@ -32,6 +32,7 @@ func (handler *PlaylistHandler) Playlist(config *configs.Config) http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := req.HandleBody[PlaylistRequest](&w, r)
 		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 

@@ -6,14 +6,16 @@ import (
 	"strings"
 
 	"github.com/raevsanton/sharify-backend/configs"
+	"github.com/raevsanton/sharify-backend/internal/user"
 	"github.com/raevsanton/sharify-backend/pkg/req"
 )
 
 type AuthService struct {
+	userService *user.UserService
 }
 
-func NewAuthService() *AuthService {
-	return &AuthService{}
+func NewAuthService(userService *user.UserService) *AuthService {
+	return &AuthService{userService: userService}
 }
 
 func (service *AuthService) GetTokens(authCode string, config *configs.Config) (AuthResponse, error) {
