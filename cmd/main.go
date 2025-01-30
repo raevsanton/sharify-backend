@@ -41,9 +41,9 @@ func App() http.Handler {
 func main() {
 	app := App()
 	server := http.Server{
-		Addr:    ":8081",
+		Addr:    ":8082",
 		Handler: app,
 	}
-	fmt.Println("Server is listening on port 8081")
+	fmt.Println("Server is listening on port 8082")
 	server.ListenAndServe()
 }

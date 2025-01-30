@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/raevsanton/sharify-backend/configs"
 	"github.com/raevsanton/sharify-backend/internal/user"
@@ -67,11 +68,11 @@ func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, token s
 	return uris, tracks.Total, nil
 }
 
-func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, token string, hundredURIs []string, playlistId CreatePlaylistResponse, position int) error {
+func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, token string, URIs []string, playlistId CreatePlaylistResponse, position int) error {
 	url := fmt.Sprintf("https://api.spotify.com/v1/playlists/%s/tracks", playlistId.Id)
 
 	bodyRequest := AddTracksToPlaylistRequest{
-		URIs:     hundredURIs,
+		URIs:     URIs,
 		Position: position,
 	}
 
@@ -97,41 +98,36 @@ func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, token 
 }
 
 func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *configs.Config, token string) (PlaylistResponse, error) {
-	var accumulatedURIs []string
-	totalURIs := 0
-	offset := 0
-
-	for {
-		URIs, total, err := service.GetURIsLikedTracks(body, token, offset)
-		if err != nil {
-			return PlaylistResponse{}, err
-		}
-		if totalURIs == 0 {
-			totalURIs = total
-		}
-		offset += 50
-		accumulatedURIs = append(accumulatedURIs, URIs...)
-
-		if len(accumulatedURIs) >= totalURIs {
-			break
-		}
-	}
+	var wg sync.WaitGroup
 
 	playlistId, err := service.CreatePlaylist(body, token)
 	if err != nil {
 		return PlaylistResponse{}, err
 	}
 
-	position := 0
-
-	for i := 0; i < len(accumulatedURIs); i += 100 {
-		hundredURIs := accumulatedURIs[i:min(i+100, len(accumulatedURIs))]
-		err := service.AddTracksToPlaylist(body, token, hundredURIs, playlistId, position)
-		if err != nil {
-			return PlaylistResponse{}, err
-		}
-		position += 100
+	_, totalURIs, err := service.GetURIsLikedTracks(body, token, 0)
+	if err != nil {
+		return PlaylistResponse{}, err
 	}
+
+	for offset := 0; offset < totalURIs; offset += 50 {
+		wg.Add(1)
+		go func(offset int) {
+			defer wg.Done()
+
+			URIs, _, err := service.GetURIsLikedTracks(body, token, offset)
+			if err != nil {
+				return
+			}
+
+			err = service.AddTracksToPlaylist(body, token, URIs, playlistId, offset)
+			if err != nil {
+				return
+			}
+		}(offset)
+	}
+
+	wg.Wait()
 
 	return PlaylistResponse{
 		PlaylistId: playlistId.Id,
