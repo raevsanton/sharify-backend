@@ -24,7 +24,7 @@ func (service *AuthService) GetTokens(authCode string, config *configs.Config) (
 	data.Set("redirect_uri", config.Auth.ClientUrl)
 	data.Set("code", authCode)
 
-	r, err := http.NewRequest(http.MethodPost, "https://accounts.spotify.com/api/token", strings.NewReader(data.Encode()))
+	r, err := http.NewRequest(http.MethodPost, config.Spotify.AuthUrl+"/token", strings.NewReader(data.Encode()))
 	if err != nil {
 		return AuthResponse{}, err
 	}

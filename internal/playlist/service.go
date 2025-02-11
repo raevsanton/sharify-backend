@@ -23,13 +23,13 @@ func NewPlaylistService(userService *user.UserService) *PlaylistService {
 	}
 }
 
-func (service *PlaylistService) CreatePlaylist(body PlaylistRequest, token string) (CreatePlaylistResponse, error) {
-	user, err := service.userService.GetCurrentUserProfile(token)
+func (service *PlaylistService) CreatePlaylist(body PlaylistRequest, config *configs.Config, token string) (CreatePlaylistResponse, error) {
+	user, err := service.userService.GetCurrentUserProfile(token, config)
 	if err != nil {
 		return CreatePlaylistResponse{}, err
 	}
 
-	url := fmt.Sprintf("https://api.spotify.com/v1/users/%s/playlists", url.PathEscape(user.ID))
+	url := fmt.Sprintf("%s/users/%s/playlists", config.Spotify.ApiUrl, url.PathEscape(user.ID))
 
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
@@ -45,8 +45,8 @@ func (service *PlaylistService) CreatePlaylist(body PlaylistRequest, token strin
 	return req.DoRequest[CreatePlaylistResponse](r, http.StatusCreated)
 }
 
-func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, token string, offset int) (URIs []string, total int, err error) {
-	url := fmt.Sprintf("https://api.spotify.com/v1/me/tracks?offset=%d&limit=50", offset)
+func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, config *configs.Config, token string, offset int) (URIs []string, total int, err error) {
+	url := fmt.Sprintf("%s/me/tracks?offset=%d&limit=50", config.Spotify.ApiUrl, offset)
 
 	r, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -68,8 +68,8 @@ func (service *PlaylistService) GetURIsLikedTracks(body PlaylistRequest, token s
 	return uris, tracks.Total, nil
 }
 
-func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, token string, URIs []string, playlistId CreatePlaylistResponse, position int) error {
-	url := fmt.Sprintf("https://api.spotify.com/v1/playlists/%s/tracks", playlistId.Id)
+func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, config *configs.Config, token string, URIs []string, playlistId CreatePlaylistResponse, position int) error {
+	url := fmt.Sprintf("%s/playlists/%s/tracks", config.Spotify.ApiUrl, playlistId.Id)
 
 	bodyRequest := AddTracksToPlaylistRequest{
 		URIs:     URIs,
@@ -100,12 +100,12 @@ func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, token 
 func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *configs.Config, token string) (PlaylistResponse, error) {
 	var wg sync.WaitGroup
 
-	playlistId, err := service.CreatePlaylist(body, token)
+	playlistId, err := service.CreatePlaylist(body, config, token)
 	if err != nil {
 		return PlaylistResponse{}, err
 	}
 
-	_, totalURIs, err := service.GetURIsLikedTracks(body, token, 0)
+	_, totalURIs, err := service.GetURIsLikedTracks(body, config, token, 0)
 	if err != nil {
 		return PlaylistResponse{}, err
 	}
@@ -115,12 +115,12 @@ func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *c
 		go func(offset int) {
 			defer wg.Done()
 
-			URIs, _, err := service.GetURIsLikedTracks(body, token, offset)
+			URIs, _, err := service.GetURIsLikedTracks(body, config, token, offset)
 			if err != nil {
 				return
 			}
 
-			err = service.AddTracksToPlaylist(body, token, URIs, playlistId, offset)
+			err = service.AddTracksToPlaylist(body, config, token, URIs, playlistId, offset)
 			if err != nil {
 				return
 			}

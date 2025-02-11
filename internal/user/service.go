@@ -3,6 +3,7 @@ package user
 import (
 	"net/http"
 
+	"github.com/raevsanton/sharify-backend/configs"
 	"github.com/raevsanton/sharify-backend/pkg/req"
 )
 
@@ -13,8 +14,8 @@ func NewUseService() *UserService {
 	return &UserService{}
 }
 
-func (service *UserService) GetCurrentUserProfile(token string) (CurrentUserResponse, error) {
-	r, err := http.NewRequest(http.MethodGet, "https://api.spotify.com/v1/me", nil)
+func (service *UserService) GetCurrentUserProfile(token string, config *configs.Config) (CurrentUserResponse, error) {
+	r, err := http.NewRequest(http.MethodGet, config.Spotify.ApiUrl+"/me", nil)
 	if err != nil {
 		return CurrentUserResponse{}, err
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/raevsanton/sharify-backend/pkg/codec"
 )
@@ -11,7 +12,9 @@ import (
 func DoRequest[T any](req *http.Request, expectedStatus int) (T, error) {
 	var result T
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
 	res, err := client.Do(req)
 	if err != nil {
 		return result, fmt.Errorf("failed to send request: %w", err)

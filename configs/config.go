@@ -8,7 +8,14 @@ import (
 )
 
 type Config struct {
-	Auth AuthConfig
+	Port    string
+	Spotify SpotifyConfig
+	Auth    AuthConfig
+}
+
+type SpotifyConfig struct {
+	ApiUrl  string
+	AuthUrl string
 }
 
 type AuthConfig struct {
@@ -24,6 +31,11 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
+		Port: os.Getenv("PORT"),
+		Spotify: SpotifyConfig{
+			ApiUrl:  os.Getenv("SPOTIFY_API_URL"),
+			AuthUrl: os.Getenv("SPOTIFY_AUTH_URL"),
+		},
 		Auth: AuthConfig{
 			ClientId:     os.Getenv("CLIENT_ID"),
 			ClientSecret: os.Getenv("CLIENT_SECRET"),

@@ -11,8 +11,7 @@ import (
 	"github.com/raevsanton/sharify-backend/pkg/middleware"
 )
 
-func App() http.Handler {
-	conf := configs.LoadConfig()
+func App(conf *configs.Config) http.Handler {
 	router := http.NewServeMux()
 
 	// Services
@@ -39,11 +38,13 @@ func App() http.Handler {
 }
 
 func main() {
-	app := App()
+	conf := configs.LoadConfig()
+	app := App(conf)
+
 	server := http.Server{
-		Addr:    ":8082",
+		Addr:    ":" + conf.Port,
 		Handler: app,
 	}
-	fmt.Println("Server is listening on port 8082")
+	fmt.Println("Server is listening on port " + conf.Port)
 	server.ListenAndServe()
 }

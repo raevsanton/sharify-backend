@@ -50,13 +50,13 @@ func (handler *AuthHandler) Authentication(config *configs.Config) http.HandlerF
 
 func (handler *AuthHandler) TokenValidation(config *configs.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accessToken, err := cookie.GetCookie(r, "access_token")
+		token, err := cookie.GetCookie(r, "access_token")
 		if err != nil {
 			http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 			return
 		}
 
-		_, err = handler.userService.GetCurrentUserProfile(accessToken)
+		_, err = handler.userService.GetCurrentUserProfile(token, config)
 		if err != nil {
 			http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 			return

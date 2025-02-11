@@ -45,7 +45,7 @@ func getNewTokens(config *configs.Config, token string) (auth.AuthResponse, erro
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", token)
 
-	r, err := http.NewRequest(http.MethodPost, "https://accounts.spotify.com/api/token", strings.NewReader(data.Encode()))
+	r, err := http.NewRequest(http.MethodPost, config.Spotify.AuthUrl+"/token", strings.NewReader(data.Encode()))
 	if err != nil {
 		return auth.AuthResponse{}, err
 	}
