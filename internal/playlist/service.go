@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/raevsanton/sharify-backend/configs"
 	"github.com/raevsanton/sharify-backend/internal/user"
@@ -87,7 +88,9 @@ func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, config
 
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
 	_, err = client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to fetch adding tracks to playlist: %w", err)
