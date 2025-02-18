@@ -1,9 +1,9 @@
-API for service that allows create of playlists in Spotify with your liked tracks.
+API for service that allows create playlists in Spotify with your liked tracks.
 
 
 ## TODO List
 
-- **Use `HttpOnly: true` for cookies**
+- **Use goroutines to add uris in playlist**
 
 - **Add PostgreSQL**
 

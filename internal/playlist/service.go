@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sync"
 
 	"github.com/raevsanton/sharify-backend/configs"
 	"github.com/raevsanton/sharify-backend/internal/user"
@@ -98,8 +97,6 @@ func (service *PlaylistService) AddTracksToPlaylist(body PlaylistRequest, config
 }
 
 func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *configs.Config, token string) (PlaylistResponse, error) {
-	var wg sync.WaitGroup
-
 	playlistId, err := service.CreatePlaylist(body, config, token)
 	if err != nil {
 		return PlaylistResponse{}, err
@@ -111,23 +108,16 @@ func (service *PlaylistService) GeneratePlaylist(body PlaylistRequest, config *c
 	}
 
 	for offset := 0; offset < totalURIs; offset += 50 {
-		wg.Add(1)
-		go func(offset int) {
-			defer wg.Done()
+		URIs, _, err := service.GetURIsLikedTracks(body, config, token, offset)
+		if err != nil {
+			return PlaylistResponse{}, err
+		}
 
-			URIs, _, err := service.GetURIsLikedTracks(body, config, token, offset)
-			if err != nil {
-				return
-			}
-
-			err = service.AddTracksToPlaylist(body, config, token, URIs, playlistId, offset)
-			if err != nil {
-				return
-			}
-		}(offset)
+		err = service.AddTracksToPlaylist(body, config, token, URIs, playlistId, offset)
+		if err != nil {
+			return PlaylistResponse{}, err
+		}
 	}
-
-	wg.Wait()
 
 	return PlaylistResponse{
 		PlaylistId: playlistId.Id,

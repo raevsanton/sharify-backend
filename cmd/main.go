@@ -9,6 +9,7 @@ import (
 	"github.com/raevsanton/sharify-backend/internal/playlist"
 	"github.com/raevsanton/sharify-backend/internal/user"
 	"github.com/raevsanton/sharify-backend/pkg/middleware"
+	"github.com/raevsanton/sharify-backend/pkg/server"
 )
 
 func App(conf *configs.Config) http.Handler {
@@ -41,10 +42,8 @@ func main() {
 	conf := configs.LoadConfig()
 	app := App(conf)
 
-	server := http.Server{
-		Addr:    ":" + conf.Port,
-		Handler: app,
+	srv := server.New(":"+conf.Port, app)
+	if err := srv.Start(); err != nil {
+		fmt.Println("Server error:", err)
 	}
-	fmt.Println("Server is listening on port " + conf.Port)
-	server.ListenAndServe()
 }
