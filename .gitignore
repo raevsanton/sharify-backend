@@ -1,4 +1,30 @@
-.vscode
-/node_modules
-.env
+# Binares
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Compiled files
+*.test
+*.out
+
+# Go folders
+bin/
+obj/
+
+# Dependencies files
+/vendor/
+Gopkg.lock
+Gopkg.toml
+
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
 .DS_Store
+Thumbs.db
+
+# .env file
+.env
