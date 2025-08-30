@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	Port    string
-	Spotify SpotifyConfig
-	Auth    AuthConfig
+	Port        string
+	Environment string
+	Spotify     SpotifyConfig
+	Auth        AuthConfig
 }
 
 type SpotifyConfig struct {
@@ -30,8 +31,14 @@ func LoadConfig() *Config {
 		log.Println(err)
 	}
 
+	environment := os.Getenv("ENVIRONMENT")
+	if environment == "" {
+		environment = "development"
+	}
+
 	return &Config{
-		Port: os.Getenv("PORT"),
+		Port:        os.Getenv("PORT"),
+		Environment: environment,
 		Spotify: SpotifyConfig{
 			ApiUrl:  os.Getenv("SPOTIFY_API_URL"),
 			AuthUrl: os.Getenv("SPOTIFY_AUTH_URL"),

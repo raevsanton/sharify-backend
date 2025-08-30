@@ -41,8 +41,9 @@ func (handler *AuthHandler) Authentication(config *configs.Config) http.HandlerF
 			return
 		}
 
-		cookie.SetCookie(w, "access_token", tokens.AccessToken, 3600)
-		cookie.SetCookie(w, "refresh_token", tokens.RefreshToken, 604800)
+		isProduction := config.Environment == "production"
+		cookie.SetCookie(w, "access_token", tokens.AccessToken, 3600, isProduction)
+		cookie.SetCookie(w, "refresh_token", tokens.RefreshToken, 604800, isProduction)
 
 		w.WriteHeader(http.StatusOK)
 	}

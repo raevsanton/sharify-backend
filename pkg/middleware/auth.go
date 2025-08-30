@@ -29,7 +29,8 @@ func IsAuthed(next http.Handler, config *configs.Config) http.Handler {
 				return
 			}
 
-			cookie.SetCookie(w, "access_token", tokens.AccessToken, 3600)
+			isProduction := config.Environment == "production"
+			cookie.SetCookie(w, "access_token", tokens.AccessToken, 3600, isProduction)
 
 			r.AddCookie(&http.Cookie{
 				Name:  "access_token",
